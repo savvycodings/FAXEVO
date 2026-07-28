@@ -1,0 +1,267 @@
+{
+  "1": {
+    "inputs": {
+      "unet_name": "qwen-image-2512-Q4_K_M.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "UnetLoaderGGUF  (server: node 88)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "clip_name": "Qwen2.5-VL-7B-Instruct-UD-Q4_K_XL.gguf",
+      "type": "qwen_image"
+    },
+    "class_type": "CLIPLoaderGGUF",
+    "_meta": {
+      "title": "CLIPLoaderGGUF  (server: node 89)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "VAELoader  (server: node 10)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "image": "Screenshot 2026-05-14 145519.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "LoadImage primary  (server: node 41 — patched by COMFYUI_LOAD_IMAGE_NODE_ID)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "image": "Screenshot 2026-05-14 145519.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "LoadImage secondary  (server: node 83 — same upload as 41 today)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "ImageScaleToTotalPixels 1.0 MP  (server: node 90 — aspect-preserving)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 0.6,
+      "resolution_steps": 1,
+      "image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "ImageScaleToTotalPixels 0.6 MP  (server: node 91 — aspect-preserving)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "pixels": [
+        "6",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAEEncode  (server: node 75)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "prompt": "You are an AI tennis/padel coach correcting a player's technique. Apply ONLY the adjustments listed below; keep every other aspect of the image IDENTICAL to the input.\n\nDIAGNOSIS\nThe player collapses the lead knee at contact and the wrist breaks down below shoulder height, which leaks power and pushes the racket face open.\n\nRECOMMENDATIONS\n1. Drive through a firm lead leg — knee tracks straight over the toe.\n2. Keep the wrist firm and the racket head above the wrist line at contact.\n3. Rotate the shoulders fully through the shot toward the target.\n\nSHOT CLASSIFICATION\n- family: forehand\n- name: forehand drive\n- handedness: right-handed\n\nLANDMARK DELTAS (this is a SAMPLE — the xevo server replaces this block per frame)\n- LEFT_KNEE  Y  up        (~0.05)  — extend the lead leg, do not let the knee collapse inward.\n- RIGHT_WRIST X right     (~0.04)  — bring the wrist forward so the racket head leads.\n- RIGHT_SHOULDER X right  (~0.03)  — finish shoulder rotation toward the net.\n- HEAD        keep      (frozen)   — do not move the head or change gaze.\n\nPRO REFERENCE\nAt impact, professional players show a fully extended lead leg, neutral wrist with the racket face square to the ball, and a shoulder line aligned through the contact point.\n\n=== NON-NEGOTIABLE INVARIANTS ===\n- HEAD & EYE LINE FREEZE: do not alter head pose, gaze direction, or facial features.\n- SCALE LOCK: camera distance, framing, and player body proportions must not change.\n- IDENTITY LOCK: same player, same clothing, same skin tone, same hair.\n- ENVIRONMENT LOCK: same court, same lighting, same shadows, same background.\n- EQUIPMENT LOCK: same racket model, same ball (if visible).\n- SPORT LOCK (padel vs tennis): if there are glass walls and a short solid racket -> padel; if open outdoor court with strings -> tennis. Do not change the sport.\n- NO TEXT, NO LOGOS added to the scene.\n\nOUTPUT: photorealistic, sharp focus on the player, natural lighting, same composition as the input frame.",
+      "clip": [
+        "2",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "image1": [
+        "6",
+        0
+      ],
+      "image2": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "Positive prompt  (server: node 68 — patched by COMFYUI_PROMPT_NODE_ID)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "prompt": "",
+      "clip": [
+        "2",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "image1": [
+        "6",
+        0
+      ],
+      "image2": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "Negative prompt  (server: node 69 — empty in production)"
+    }
+  },
+  "11": {
+    "inputs": {
+      "shift": 3,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "ModelSamplingAuraFlow  (server: node 67, shift=3)"
+    }
+  },
+  "12": {
+    "inputs": {
+      "strength": 1,
+      "model": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "CFGNorm",
+    "_meta": {
+      "title": "CFGNorm  (server: node 64, strength=1)"
+    }
+  },
+  "13": {
+    "inputs": {
+      "seed": 1024549934991696,
+      "steps": 40,
+      "cfg": 4,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "12",
+        0
+      ],
+      "positive": [
+        "9",
+        0
+      ],
+      "negative": [
+        "10",
+        0
+      ],
+      "latent_image": [
+        "18",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler  (server: node 65 — steps=40, cfg=4, euler, simple, MASKED inpaint)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "samples": [
+        "13",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAEDecode  (server: node 8)"
+    }
+  },
+  "15": {
+    "inputs": {
+      "filename_prefix": "xevo_qwen_edit_correction",
+      "images": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "SaveImage  (server: node 9)"
+    }
+  },
+  "16": {
+    "inputs": {
+      "image": "Screenshot 2026-05-14 145519.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "LoadImage pose mask  (server: node 92 — patched by COMFYUI_MASK_NODE_ID)"
+    }
+  },
+  "17": {
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "ImageToMask",
+    "_meta": {
+      "title": "ImageToMask (red channel)  (server: node 93)"
+    }
+  },
+  "18": {
+    "inputs": {
+      "samples": [
+        "8",
+        0
+      ],
+      "mask": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "SetLatentNoiseMask",
+    "_meta": {
+      "title": "SetLatentNoiseMask  (server: node 94 — only player area regenerates)"
+    }
+  }
+}

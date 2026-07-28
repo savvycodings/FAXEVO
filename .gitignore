@@ -1,0 +1,33 @@
+﻿# deps / build
+**/node_modules/
+**/dist/
+**/.expo/
+**/android/app/build/
+**/ios/Pods/
+**/.turbo/
+**/.next/
+
+# secrets / local env
+**/.env
+**/.env.*
+!**/.env*.example
+!**/.env.railway.example
+server/.env.railway
+
+# caches / junk
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+**/.venv/
+**/unsloth_compiled_cache/
+.cursor/
+
+# large / local data dumps
+shots/
+shots-*.json
+shots-*.md
+finetune/
+planningformesh/
+
+# nested standalone repos are pushed separately to FEXevo / BEXevo
+# keep folders as pointers via submodule after first FE/BE push
