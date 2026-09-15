@@ -1,0 +1,48 @@
+{
+  "_machine": "xevo-video-fun-control-14b",
+  "_workflows": ["BEXevo/workflows/video_wan2_2_fun_control.api.json"],
+  "_fill_in_before_deploy": "Every 'url' below is TODO — point it at wherever your current shared Comfy instance already loads this file from. filename/type/save_path are read directly off the workflow JSON node inputs, those are accurate.",
+  "_gpu_note": "Two 14B bf16 UNets loaded at once (high-noise + low-noise pass, see KSamplerAdvanced nodes 96/95 splitting steps 0-15 / 15-30) — this is the heaviest of the 3 machines. Use A100, not T4/L4/A10G.",
+  "models": [
+    {
+      "name": "Wan 2.2 Fun Control 14B — high noise UNet",
+      "type": "unet",
+      "base": "Wan2.2-Fun-Control",
+      "save_path": "models/diffusion_models",
+      "description": "Loaded by UNETLoader (node 101), used by KSamplerAdvanced (node 96, steps 0-15, add_noise=enable, return_with_leftover_noise=enable)",
+      "reference": "TODO",
+      "filename": "wan2.2_fun_control_high_noise_14B_bf16.safetensors",
+      "url": "TODO"
+    },
+    {
+      "name": "Wan 2.2 Fun Control 14B — low noise UNet",
+      "type": "unet",
+      "base": "Wan2.2-Fun-Control",
+      "save_path": "models/diffusion_models",
+      "description": "Loaded by UNETLoader (node 102), used by KSamplerAdvanced (node 95, steps 15-30, add_noise=disable)",
+      "reference": "TODO",
+      "filename": "wan2.2_fun_control_low_noise_14B_bf16.safetensors",
+      "url": "TODO"
+    },
+    {
+      "name": "UMT5-XXL text encoder (fp8 scaled)",
+      "type": "clip",
+      "base": "Wan2.2",
+      "save_path": "models/clip",
+      "description": "Loaded by CLIPLoader (node 90), type=wan. Same file as the TI2V 5B machine.",
+      "reference": "TODO",
+      "filename": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "url": "TODO"
+    },
+    {
+      "name": "Wan 2.1 VAE",
+      "type": "vae",
+      "base": "Wan2.1",
+      "save_path": "models/vae",
+      "description": "Loaded by VAELoader (node 92). NOTE: this workflow uses 'wan_2.1_vae.safetensors', not the 'wan2.2_vae.safetensors' used by the TI2V 5B workflow — confirm this is intentional, see README.",
+      "reference": "TODO",
+      "filename": "wan_2.1_vae.safetensors",
+      "url": "TODO"
+    }
+  ]
+}
