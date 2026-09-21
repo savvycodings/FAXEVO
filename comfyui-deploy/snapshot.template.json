@@ -1,0 +1,36 @@
+{
+  "_comment": "PLACEHOLDER hashes below. Do not deploy this as-is — replace this whole file with a real ComfyUI-Manager 'Save Snapshot' export from the shared Comfy instance that currently renders BEXevo/workflows/*.json correctly. See README.md.",
+
+  "comfyui": "REPLACE_WITH_REAL_COMFYUI_CORE_COMMIT_HASH",
+
+  "git_custom_nodes": {
+    "https://github.com/ltdrdata/ComfyUI-Manager.git": {
+      "hash": "REPLACE_WITH_REAL_HASH",
+      "disabled": false,
+      "_used_for": "snapshot export/import itself"
+    },
+    "https://github.com/city96/ComfyUI-GGUF": {
+      "hash": "REPLACE_WITH_REAL_HASH",
+      "disabled": false,
+      "_used_for": "UnetLoaderGGUF, CLIPLoaderGGUF in qwen_image_edit_plus_gguf_correction.api.json"
+    },
+    "https://github.com/Fannovel16/comfyui_controlnet_aux": {
+      "hash": "REPLACE_WITH_REAL_HASH",
+      "disabled": false,
+      "_used_for": "OpenposePreprocessor in both qwen_image_edit_plus_gguf_correction.api.json and sdxl_correction_openpose_faceid.api.json"
+    },
+    "https://github.com/cubiq/ComfyUI_IPAdapter_plus": {
+      "hash": "REPLACE_WITH_REAL_HASH",
+      "disabled": false,
+      "_used_for": "IPAdapterInsightFaceLoader, IPAdapterUnifiedLoaderFaceID, IPAdapterFaceID in sdxl_correction_openpose_faceid.api.json"
+    }
+  },
+
+  "file_custom_nodes": [],
+
+  "_notes": [
+    "ControlNetLoader / ControlNetApplyAdvanced / ImageScaleToTotalPixels / ImageToMask / SetLatentNoiseMask / KSampler(Advanced) / VAEEncode / VAEDecode / CheckpointLoaderSimple / CLIPTextEncode / UNETLoader / CLIPLoader / VAELoader / LoadImage / SaveImage are core ComfyUI nodes — no extra repo needed, just a comfyui core hash recent enough to have them.",
+    "TextEncodeQwenImageEditPlus / ModelSamplingAuraFlow / CFGNorm (Qwen-Image support) and Wan22ImageToVideoLatent / Wan22FunControlToVideo / ModelSamplingSD3 (Wan 2.1/2.2 support) are also core, not custom nodes — but they only exist in reasonably recent ComfyUI core builds, so the pinned 'comfyui' hash must postdate their introduction. Confirm by checking the working shared instance's ComfyUI version, don't assume.",
+    "LoadVideo / SaveVideo / CreateVideo / GetVideoComponents (used in both Wan video workflows) are also core built-in nodes (docs.comfy.org/built-in-nodes/SaveVideo) as of mid/late-2025 ComfyUI releases — not the older ComfyUI-VideoHelperSuite custom node pack. Same caveat: needs a recent enough comfyui hash."
+  ]
+}

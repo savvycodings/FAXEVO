@@ -1,0 +1,90 @@
+{
+  "_machine": "xevo-image-correction",
+  "_workflows": [
+    "BEXevo/workflows/qwen_image_edit_plus_gguf_correction.api.json",
+    "BEXevo/workflows/sdxl_correction_openpose_faceid.api.json"
+  ],
+  "_fill_in_before_deploy": "Every 'url' below is TODO — point it at wherever your current shared Comfy instance already loads this file from (check ComfyUI/models/<save_path>/ on that box). filename/type/save_path are read directly off the workflow JSON node inputs, those are accurate.",
+  "models": [
+    {
+      "name": "Qwen-Image edit GGUF (Q4_K_M)",
+      "type": "unet",
+      "base": "Qwen-Image-Edit",
+      "save_path": "models/unet",
+      "description": "Quantized Qwen-Image-Edit diffusion model, loaded by UnetLoaderGGUF (node 88) in qwen_image_edit_plus_gguf_correction.api.json",
+      "reference": "TODO",
+      "filename": "qwen-image-2512-Q4_K_M.gguf",
+      "url": "TODO"
+    },
+    {
+      "name": "Qwen2.5-VL-7B text encoder GGUF (Q4_K_XL)",
+      "type": "clip",
+      "base": "Qwen-Image-Edit",
+      "save_path": "models/clip",
+      "description": "Quantized text encoder, loaded by CLIPLoaderGGUF (node 89)",
+      "reference": "TODO",
+      "filename": "Qwen2.5-VL-7B-Instruct-UD-Q4_K_XL.gguf",
+      "url": "TODO"
+    },
+    {
+      "name": "Qwen-Image VAE",
+      "type": "vae",
+      "base": "Qwen-Image-Edit",
+      "save_path": "models/vae",
+      "description": "Loaded by VAELoader (node 10)",
+      "reference": "TODO",
+      "filename": "qwen_image_vae.safetensors",
+      "url": "TODO"
+    },
+    {
+      "name": "Qwen-Image Fun ControlNet (OpenPose union)",
+      "type": "controlnet",
+      "base": "Qwen-Image-Edit",
+      "save_path": "models/controlnet",
+      "description": "Loaded by ControlNetLoader (node 95), driven by OpenposePreprocessor (node 96) at strength 0.78",
+      "reference": "TODO",
+      "filename": "Qwen-Image-2512-Fun-Controlnet-Union-2602.safetensors",
+      "url": "TODO"
+    },
+    {
+      "name": "SDXL base 1.0",
+      "type": "checkpoint",
+      "base": "SDXL",
+      "save_path": "models/checkpoints",
+      "description": "Loaded by CheckpointLoaderSimple (node 1) in sdxl_correction_openpose_faceid.api.json",
+      "reference": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
+      "filename": "sd_xl_base_1.0.safetensors",
+      "url": "TODO"
+    },
+    {
+      "name": "OpenPose ControlNet XL v2",
+      "type": "controlnet",
+      "base": "SDXL",
+      "save_path": "models/controlnet",
+      "description": "Loaded by ControlNetLoader (node 95), driven by OpenposePreprocessor (node 96) at strength 0.42",
+      "reference": "TODO",
+      "filename": "OpenPoseXL2.safetensors",
+      "url": "TODO"
+    },
+    {
+      "name": "InsightFace buffalo_l",
+      "type": "insightface",
+      "base": "SDXL",
+      "save_path": "models/insightface/models/buffalo_l",
+      "description": "Loaded by IPAdapterInsightFaceLoader (node 100), provider=CUDA",
+      "reference": "TODO",
+      "filename": "buffalo_l",
+      "url": "TODO"
+    },
+    {
+      "name": "IP-Adapter FaceID Plus V2 (SDXL) — NOT in workflow JSON, resolved by preset name",
+      "type": "ipadapter",
+      "base": "SDXL",
+      "save_path": "models/ipadapter",
+      "description": "IPAdapterUnifiedLoaderFaceID (node 101) preset 'FACEID PLUS V2' resolves this + a LoRA + a CLIP vision encoder by name at runtime — filenames don't appear literally in the workflow JSON. Confirm exact filenames on the working instance before deploy: likely ip-adapter-faceid-plusv2_sdxl.bin (ipadapter), ip-adapter-faceid-plusv2_sdxl_lora.safetensors (models/loras), and a CLIP-ViT-H vision encoder (models/clip_vision).",
+      "reference": "https://github.com/cubiq/ComfyUI_IPAdapter_plus",
+      "filename": "TODO — confirm on working instance",
+      "url": "TODO"
+    }
+  ]
+}
