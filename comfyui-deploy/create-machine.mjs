@@ -53,7 +53,11 @@ function stripUnderscoreKeys(obj) {
   return obj;
 }
 
-const snapshotRaw = readJson(path.join(__dirname, "snapshot.template.json"));
+// Which snapshot to send. Defaults to the shared image-correction snapshot; the two Wan
+// video machines only need core nodes, so pass SNAPSHOT_FILE=snapshot.video.json for them.
+const snapshotFile = process.env.SNAPSHOT_FILE || "snapshot.template.json";
+
+const snapshotRaw = readJson(path.join(__dirname, snapshotFile));
 const modelsRaw = readJson(path.join(__dirname, modelsFile));
 
 const snapshot = stripUnderscoreKeys(snapshotRaw);
@@ -90,6 +94,7 @@ console.log(`POST ${BUILDER_URL}/create`);
 console.log(`  machine_id: ${machineId}`);
 console.log(`  name:       ${name}`);
 console.log(`  gpu:        ${gpu}`);
+console.log(`  snapshot:   ${snapshotFile}`);
 console.log(`  models:     ${models.length}`);
 
 const res = await fetch(`${BUILDER_URL}/create`, {

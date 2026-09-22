@@ -1,26 +1,26 @@
 {
-  "_comment": "PLACEHOLDER hashes below. Do not deploy this as-is — replace this whole file with a real ComfyUI-Manager 'Save Snapshot' export from the shared Comfy instance that currently renders BEXevo/workflows/*.json correctly. See README.md.",
+  "_comment": "Hashes below are pinned to the current public HEAD of each repo (resolved via `git ls-remote`), so this file is deployable as-is. For byte-exact reproducibility of the shared Comfy box that already renders these workflows, replace this with a ComfyUI-Manager 'Save Snapshot' export from that instance (Manager menu -> Save Snapshot). See README.md. This shared snapshot targets the image-correction machine (Qwen GGUF + SDXL FaceID); the two Wan video machines can use the leaner snapshot.video.json (they use only core nodes).",
 
-  "comfyui": "REPLACE_WITH_REAL_COMFYUI_CORE_COMMIT_HASH",
+  "comfyui": "0d9017220a8a06c85f059f387949ff0bf23f4672",
 
   "git_custom_nodes": {
     "https://github.com/ltdrdata/ComfyUI-Manager.git": {
-      "hash": "REPLACE_WITH_REAL_HASH",
+      "hash": "21ab2b78c2ce74a01a11f4913b72e2e1b831cac1",
       "disabled": false,
       "_used_for": "snapshot export/import itself"
     },
     "https://github.com/city96/ComfyUI-GGUF": {
-      "hash": "REPLACE_WITH_REAL_HASH",
+      "hash": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
       "disabled": false,
       "_used_for": "UnetLoaderGGUF, CLIPLoaderGGUF in qwen_image_edit_plus_gguf_correction.api.json"
     },
     "https://github.com/Fannovel16/comfyui_controlnet_aux": {
-      "hash": "REPLACE_WITH_REAL_HASH",
+      "hash": "59b1fc411ede8623b2997855b8018f0b3b6cf49f",
       "disabled": false,
       "_used_for": "OpenposePreprocessor in both qwen_image_edit_plus_gguf_correction.api.json and sdxl_correction_openpose_faceid.api.json"
     },
     "https://github.com/cubiq/ComfyUI_IPAdapter_plus": {
-      "hash": "REPLACE_WITH_REAL_HASH",
+      "hash": "a0f451a5113cf9becb0847b92884cb10cbdec0ef",
       "disabled": false,
       "_used_for": "IPAdapterInsightFaceLoader, IPAdapterUnifiedLoaderFaceID, IPAdapterFaceID in sdxl_correction_openpose_faceid.api.json"
     }
@@ -30,7 +30,7 @@
 
   "_notes": [
     "ControlNetLoader / ControlNetApplyAdvanced / ImageScaleToTotalPixels / ImageToMask / SetLatentNoiseMask / KSampler(Advanced) / VAEEncode / VAEDecode / CheckpointLoaderSimple / CLIPTextEncode / UNETLoader / CLIPLoader / VAELoader / LoadImage / SaveImage are core ComfyUI nodes — no extra repo needed, just a comfyui core hash recent enough to have them.",
-    "TextEncodeQwenImageEditPlus / ModelSamplingAuraFlow / CFGNorm (Qwen-Image support) and Wan22ImageToVideoLatent / Wan22FunControlToVideo / ModelSamplingSD3 (Wan 2.1/2.2 support) are also core, not custom nodes — but they only exist in reasonably recent ComfyUI core builds, so the pinned 'comfyui' hash must postdate their introduction. Confirm by checking the working shared instance's ComfyUI version, don't assume.",
-    "LoadVideo / SaveVideo / CreateVideo / GetVideoComponents (used in both Wan video workflows) are also core built-in nodes (docs.comfy.org/built-in-nodes/SaveVideo) as of mid/late-2025 ComfyUI releases — not the older ComfyUI-VideoHelperSuite custom node pack. Same caveat: needs a recent enough comfyui hash."
+    "TextEncodeQwenImageEditPlus / ModelSamplingAuraFlow / CFGNorm (Qwen-Image support) and Wan22ImageToVideoLatent / Wan22FunControlToVideo / ModelSamplingSD3 (Wan 2.1/2.2 support) are also core, not custom nodes — the pinned 'comfyui' hash above is current public HEAD, which postdates their introduction.",
+    "LoadVideo / SaveVideo / CreateVideo / GetVideoComponents (used in both Wan video workflows) are also core built-in nodes (docs.comfy.org/built-in-nodes/SaveVideo) as of mid/late-2025 ComfyUI releases — not the older ComfyUI-VideoHelperSuite custom node pack."
   ]
 }

@@ -1,7 +1,7 @@
 {
   "_machine": "xevo-video-ti2v-5b",
-  "_workflows": ["BEXevo/workflows/video_wan2_2_5B_ti2v.json"],
-  "_fill_in_before_deploy": "Every 'url' below is TODO — point it at wherever your current shared Comfy instance already loads this file from. filename/type/save_path are read directly off the workflow JSON node inputs, those are accurate.",
+  "_workflows": ["FAXevo/workflows/video_wan2_2_5B_ti2v.json"],
+  "_source": "All files are from the Comfy-Org/Wan_2.2_ComfyUI_Repackaged HF repo (split_files/*), the same source ComfyUI's official Wan 2.2 TI2V 5B template uses. filename/type/save_path are read directly off the workflow JSON node inputs.",
   "models": [
     {
       "name": "Wan 2.2 TI2V 5B",
@@ -9,29 +9,29 @@
       "base": "Wan2.2",
       "save_path": "models/diffusion_models",
       "description": "Loaded by UNETLoader (node 37), image-to-video latent via Wan22ImageToVideoLatent (node 55) at 1280x704, length 121",
-      "reference": "TODO",
+      "reference": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "filename": "wan2.2_ti2v_5B_fp16.safetensors",
-      "url": "TODO"
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors"
     },
     {
       "name": "UMT5-XXL text encoder (fp8 scaled)",
       "type": "clip",
       "base": "Wan2.2",
       "save_path": "models/clip",
-      "description": "Loaded by CLIPLoader (node 38), type=wan. Same file also used by the Fun Control 14B machine — worth caching once and pointing both machines at the same source.",
-      "reference": "TODO",
+      "description": "Loaded by CLIPLoader (node 38), type=wan. Same file also used by the Fun Control 14B machine — worth caching once and pointing both machines at the same source. ComfyUI resolves CLIPLoader from both models/clip and models/text_encoders.",
+      "reference": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "filename": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
-      "url": "TODO"
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
     },
     {
       "name": "Wan 2.2 VAE",
       "type": "vae",
       "base": "Wan2.2",
       "save_path": "models/vae",
-      "description": "Loaded by VAELoader (node 39). NOTE: this is 'wan2.2_vae.safetensors' — the Fun Control 14B workflow instead loads 'wan_2.1_vae.safetensors'. Confirm that's intentional, see README.",
-      "reference": "TODO",
+      "description": "Loaded by VAELoader (node 39). Correctly uses 'wan2.2_vae.safetensors' — the Fun Control 14B workflow instead loads 'wan_2.1_vae.safetensors'. Both are intentional and match ComfyUI's official Wan 2.2 templates (TI2V 5B -> 2.2 VAE, Fun Control 14B -> 2.1 VAE).",
+      "reference": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "filename": "wan2.2_vae.safetensors",
-      "url": "TODO"
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors"
     }
   ]
 }

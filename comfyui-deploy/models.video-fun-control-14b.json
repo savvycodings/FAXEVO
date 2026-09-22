@@ -1,8 +1,23 @@
 {
   "_machine": "xevo-video-fun-control-14b",
-  "_workflows": ["BEXevo/workflows/video_wan2_2_fun_control.api.json"],
-  "_fill_in_before_deploy": "Every 'url' below is TODO — point it at wherever your current shared Comfy instance already loads this file from. filename/type/save_path are read directly off the workflow JSON node inputs, those are accurate.",
-  "_gpu_note": "Two 14B bf16 UNets loaded at once (high-noise + low-noise pass, see KSamplerAdvanced nodes 96/95 splitting steps 0-15 / 15-30) — this is the heaviest of the 3 machines. Use A100, not T4/L4/A10G.",
+  "_workflows": ["FAXevo/workflows/video_wan2_2_fun_control.api.json"],
+  "_source": "All files are from the Comfy-Org/Wan_2.2_ComfyUI_Repackaged HF repo (split_files/*), the same source ComfyUI's official Wan 2.2 Fun Control template uses. filename/type/save_path are read directly off the workflow JSON node inputs.",
+  "_gpu_note": "Two 14B bf16 UNets loaded across the high-noise + low-noise pass (KSamplerAdvanced nodes 96/95 split steps 0-15 / 15-30). bf16 is ~28.6GB per UNet -> use A100 for the bf16 files below.",
+  "_fp8_variant_5090": {
+    "why": "For a 32GB card (e.g. RTX 5090) the bf16 pair is too big. Use the fp8_scaled UNets (~14GB each) with the fp8 workflow at FAXevo/workflows/video_wan2_2_fun_control.fp8.api.json (only the two UNet filenames differ; CLIP + VAE are identical to below).",
+    "files": [
+      {
+        "filename": "wan2.2_fun_control_high_noise_14B_fp8_scaled.safetensors",
+        "save_path": "models/diffusion_models",
+        "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_fun_control_high_noise_14B_fp8_scaled.safetensors"
+      },
+      {
+        "filename": "wan2.2_fun_control_low_noise_14B_fp8_scaled.safetensors",
+        "save_path": "models/diffusion_models",
+        "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_fun_control_low_noise_14B_fp8_scaled.safetensors"
+      }
+    ]
+  },
   "models": [
     {
       "name": "Wan 2.2 Fun Control 14B — high noise UNet",
@@ -10,9 +25,9 @@
       "base": "Wan2.2-Fun-Control",
       "save_path": "models/diffusion_models",
       "description": "Loaded by UNETLoader (node 101), used by KSamplerAdvanced (node 96, steps 0-15, add_noise=enable, return_with_leftover_noise=enable)",
-      "reference": "TODO",
+      "reference": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "filename": "wan2.2_fun_control_high_noise_14B_bf16.safetensors",
-      "url": "TODO"
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_fun_control_high_noise_14B_bf16.safetensors"
     },
     {
       "name": "Wan 2.2 Fun Control 14B — low noise UNet",
@@ -20,29 +35,29 @@
       "base": "Wan2.2-Fun-Control",
       "save_path": "models/diffusion_models",
       "description": "Loaded by UNETLoader (node 102), used by KSamplerAdvanced (node 95, steps 15-30, add_noise=disable)",
-      "reference": "TODO",
+      "reference": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "filename": "wan2.2_fun_control_low_noise_14B_bf16.safetensors",
-      "url": "TODO"
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_fun_control_low_noise_14B_bf16.safetensors"
     },
     {
       "name": "UMT5-XXL text encoder (fp8 scaled)",
       "type": "clip",
       "base": "Wan2.2",
       "save_path": "models/clip",
-      "description": "Loaded by CLIPLoader (node 90), type=wan. Same file as the TI2V 5B machine.",
-      "reference": "TODO",
+      "description": "Loaded by CLIPLoader (node 90), type=wan. Same file as the TI2V 5B machine. ComfyUI resolves CLIPLoader from both models/clip and models/text_encoders.",
+      "reference": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "filename": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
-      "url": "TODO"
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
     },
     {
       "name": "Wan 2.1 VAE",
       "type": "vae",
       "base": "Wan2.1",
       "save_path": "models/vae",
-      "description": "Loaded by VAELoader (node 92). NOTE: this workflow uses 'wan_2.1_vae.safetensors', not the 'wan2.2_vae.safetensors' used by the TI2V 5B workflow — confirm this is intentional, see README.",
-      "reference": "TODO",
+      "description": "Loaded by VAELoader (node 92). This workflow correctly uses 'wan_2.1_vae.safetensors' (NOT 'wan2.2_vae.safetensors') — this is intentional and matches ComfyUI's official Wan 2.2 Fun Control template, which pairs the Fun Control 14B UNets with the 2.1 VAE.",
+      "reference": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "filename": "wan_2.1_vae.safetensors",
-      "url": "TODO"
+      "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors"
     }
   ]
 }

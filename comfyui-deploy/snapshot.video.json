@@ -1,0 +1,15 @@
+{
+  "_comment": "Lean snapshot for the two Wan 2.2 video machines (xevo-video-fun-control-14b, xevo-video-ti2v-5b). Both workflows use ONLY core ComfyUI nodes (UNETLoader, CLIPLoader, VAELoader, ModelSamplingSD3, KSampler/KSamplerAdvanced, VAEDecode, LoadImage, LoadVideo, GetVideoComponents, Wan22FunControlToVideo, Wan22ImageToVideoLatent, CreateVideo, SaveVideo) — no custom nodes required. Only ComfyUI-Manager is included so comfyui-deploy can restore the snapshot. Hashes are pinned to current public HEAD (git ls-remote); the 'comfyui' core commit is recent enough to include the Wan 2.2 video nodes. Select this file with SNAPSHOT_FILE=snapshot.video.json when running create-machine.mjs.",
+
+  "comfyui": "0d9017220a8a06c85f059f387949ff0bf23f4672",
+
+  "git_custom_nodes": {
+    "https://github.com/ltdrdata/ComfyUI-Manager.git": {
+      "hash": "21ab2b78c2ce74a01a11f4913b72e2e1b831cac1",
+      "disabled": false,
+      "_used_for": "snapshot export/import itself"
+    }
+  },
+
+  "file_custom_nodes": []
+}
