@@ -1,0 +1,17 @@
+# Tunnel definitions only. The authtoken stays in ~/.config/ngrok/ngrok.yml.
+# Start with both files:
+#   ngrok start --config "$HOME/.config/ngrok/ngrok.yml" --config Workflows/ngrok/ngrok.local.yml xevo-api unsloth comfy
+version: "3"
+tunnels:
+  xevo-api:
+    proto: http
+    addr: 3050
+    domain: xevo-api-kyle.ngrok-free.dev
+  unsloth:
+    proto: http
+    addr: 8888
+    domain: xevo-sloth-kyle.ngrok.app
+  comfy:
+    proto: http
+    addr: 8188
+    domain: xevo-comfy-kyle.ngrok.dev

@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+# Bring up the local stack the app expects: API :3050, Unsloth :8888, ComfyUI :8188,
+# then one ngrok agent with a separate hostname for each.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LOG_DIR="$ROOT/Workflows/logs"
+NGROK_YML="$ROOT/Workflows/ngrok/ngrok.local.yml"
+NGROK_USER_YML="${HOME}/.config/ngrok/ngrok.yml"
+COMFY_DIR="/home/shini/ComfyUI"
+UNSLOTH_LAUNCH="${HOME}/.local/share/unsloth/launch-studio.sh"
+export ANDROID_HOME="${ANDROID_HOME:-/home/shini/Android/Sdk}"
+ADB="$ANDROID_HOME/platform-tools/adb"
+EMULATOR_BIN="$ANDROID_HOME/emulator/emulator"
+
+API_URL="https://xevo-api-kyle.ngrok-free.dev"
+LLM_URL="https://xevo-sloth-kyle.ngrok.app"
+COMFY_URL="https://xevo-comfy-kyle.ngrok.dev"
+
+mkdir -p "$LOG_DIR"
+
+listening() {
+  local port="$1"
+  ss -tlnH 2>/dev/null | awk '{print $4}' | grep -qE "[.:]${port}$"
+}
+
+wait_port() {
+  local port="$1"
+  local label="$2"
+  local i
+  for i in $(seq 1 90); do
+    if listening "$port"; then
+      echo "$label is up on :$port"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "$label did not listen on :$port within 90s. See $LOG_DIR" >&2
+  return 1
+}
+
+start_comfy() {
+  if listening 8188; then
+    echo "ComfyUI already listening on :8188"
+    return 0
+  fi
+  echo "Starting ComfyUI"
+  setsid "$COMFY_DIR/.venv/bin/python" "$COMFY_DIR/main.py" --listen 127.0.0.1 --port 8188 \
+    </dev/null >>"$LOG_DIR/comfy.log" 2>&1 &
+  echo $! >"$LOG_DIR/comfy.pid"
+  wait_port 8188 "ComfyUI"
+}
+
+start_unsloth() {
+  if listening 8888; then
+    echo "Unsloth already listening on :8888"
+    return 0
+  fi
+  echo "Starting Unsloth Studio"
+  setsid "$UNSLOTH_LAUNCH" </dev/null >>"$LOG_DIR/unsloth.log" 2>&1 &
+  echo $! >"$LOG_DIR/unsloth.pid"
+  wait_port 8888 "Unsloth"
+}
+
+start_api() {
+  if listening 3050; then
+    echo "API already listening on :3050"
+    return 0
+  fi
+  echo "Starting API"
+  setsid pnpm dev </dev/null >>"$LOG_DIR/api.log" 2>&1 &
+  echo $! >"$LOG_DIR/api.pid"
+  wait_port 3050 "API"
+}
+
+ngrok_has_all() {
+  local body
+  body="$(curl -sf --max-time 2 http://127.0.0.1:4040/api/tunnels 2>/dev/null || true)"
+  [[ "$body" == *"xevo-api-kyle.ngrok-free.dev"* ]] \
+    && [[ "$body" == *"xevo-sloth-kyle.ngrok.app"* ]] \
+    && [[ "$body" == *"xevo-comfy-kyle.ngrok.dev"* ]]
+}
+
+start_ngrok() {
+  if ngrok_has_all; then
+    echo "ngrok already has xevo-api, unsloth, and comfy"
+    return 0
+  fi
+  if listening 4040; then
+    echo "ngrok is up but missing a tunnel; restarting it"
+    pkill -x ngrok || true
+    sleep 1
+  fi
+  echo "Starting ngrok tunnels"
+  : >"$LOG_DIR/ngrok.log"
+  setsid ngrok start \
+    --config "$NGROK_USER_YML" \
+    --config "$NGROK_YML" \
+    xevo-api unsloth comfy \
+    --log=stdout \
+    </dev/null >>"$LOG_DIR/ngrok.log" 2>&1 &
+  echo $! >"$LOG_DIR/ngrok.pid"
+  local i
+  for i in $(seq 1 30); do
+    if ngrok_has_all; then
+      echo "ngrok tunnels are up"
+      return 0
+    fi
+    if grep -q "failed to start" "$LOG_DIR/ngrok.log" 2>/dev/null; then
+      echo "ngrok failed. See $LOG_DIR/ngrok.log" >&2
+      return 1
+    fi
+    sleep 1
+  done
+  echo "ngrok did not publish all three hostnames. See $LOG_DIR/ngrok.log" >&2
+  return 1
+}
+
+emulator_booted() {
+  "$ADB" devices 2>/dev/null | grep -q 'emulator-.*device' || return 1
+  local boot
+  boot="$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+  [[ "$boot" == "1" ]]
+}
+
+start_emulator() {
+  if emulator_booted; then
+    echo "Pixel 8 emulator already booted"
+    return 0
+  fi
+  if ! pgrep -f "qemu-system.*expo_pixel8|emulator -avd expo_pixel8" >/dev/null 2>&1; then
+    echo "Starting expo_pixel8"
+    setsid "$EMULATOR_BIN" -avd expo_pixel8 \
+      </dev/null >>"$LOG_DIR/emulator.log" 2>&1 &
+    echo $! >"$LOG_DIR/emulator.pid"
+  else
+    echo "Pixel 8 emulator is already starting"
+  fi
+  local i
+  for i in $(seq 1 180); do
+    if emulator_booted; then
+      echo "Pixel 8 booted"
+      return 0
+    fi
+    sleep 2
+  done
+  echo "Emulator did not finish booting. See $LOG_DIR/emulator.log" >&2
+  return 1
+}
+
+start_expo() {
+  if listening 8081; then
+    echo "Metro already listening on :8081"
+    return 0
+  fi
+  echo "Building and installing the app on the emulator"
+  chmod +x "$ROOT/app/android/gradlew"
+  setsid pnpm android </dev/null >>"$LOG_DIR/expo.log" 2>&1 &
+  echo $! >"$LOG_DIR/expo.pid"
+  local i
+  for i in $(seq 1 600); do
+    if listening 8081; then
+      echo "Metro is up on :8081"
+      return 0
+    fi
+    if grep -qE "BUILD FAILED|CommandError|Failed to install|gradlew EACCES|exited with non-zero code" "$LOG_DIR/expo.log" 2>/dev/null; then
+      echo "Expo Android build failed. See $LOG_DIR/expo.log" >&2
+      return 1
+    fi
+    sleep 2
+  done
+  echo "Metro did not listen on :8081. See $LOG_DIR/expo.log" >&2
+  return 1
+}
+
+start_comfy
+start_unsloth
+( cd "$ROOT/server" && start_api )
+start_ngrok
+start_emulator
+( cd "$ROOT/app" && start_expo )
+
+echo
+echo "API    $API_URL"
+echo "Unsloth $LLM_URL/v1"
+echo "Comfy  $COMFY_URL"
+echo "Phone  expo_pixel8  (Metro :8081)"
