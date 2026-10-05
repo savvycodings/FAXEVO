@@ -2,6 +2,8 @@
 
 **Resolved (2026-10-01): the 14B model files on the 5090 box were damaged.** After Kyle re-downloaded them, the same render on the box is clean. See [Resolution](#resolution) at the end.
 
+**Update (2026-10-05): lattice can return on those good weights when Fun Control uses the long coaching prompt** (joint-coordinate dumps). See [coaching-prompt-lattice.md](./coaching-prompt-lattice.md). That is separate from the damaged-file issue.
+
 Generated correction videos have a "stained glass" texture: skin, clothing, floor and walls break up into a regular lattice of blobs about 16 pixels across. That is one model token (8x VAE downsample times a patch size of 2), so the model is rendering each token separately instead of blending them.
 
 **Finding:** on the RTX 5090 ComfyUI box, Wan 2.2 Fun Control 14B produces this texture whatever we feed it. The Wan 2.2 5B model on the same box, with the same start frame and prompt, renders cleanly. Our workflow, prompts and inputs are not the cause. The remaining suspects are the 14B model files on the box, or how this ComfyUI and PyTorch version runs the 14B model.
