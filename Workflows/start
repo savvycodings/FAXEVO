@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Bring up the local stack the app expects: API :3050, Unsloth :8888, ComfyUI :8188,
-# then one ngrok agent with a separate hostname for each.
+# then one ngrok agent with a separate hostname for each. The coach voice Studio (:8889)
+# stays local; only the API talks to it.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -60,6 +61,54 @@ start_unsloth() {
   setsid "$UNSLOTH_LAUNCH" </dev/null >>"$LOG_DIR/unsloth.log" 2>&1 &
   echo $! >"$LOG_DIR/unsloth.pid"
   wait_port 8888 "Unsloth"
+}
+
+# Studio holds one model at a time, so the coach voice (Orpheus) runs in a second, isolated
+# instance and the main one keeps the chat/analysis model.
+VOICE_HOME="${HOME}/.unsloth/studio-voice"
+STUDIO_HOME_MAIN="${HOME}/.unsloth/studio"
+CHAT_MODEL="unsloth/Qwen3.5-4B-GGUF"
+CHAT_VARIANT="UD-Q4_K_XL"
+VOICE_MODEL="vinhnx90/VT-Orpheus-3B-TTS-Ceylia-Q4KM-GGUFF"
+VOICE_VARIANT="Q4_K_M"
+
+studio_key() {
+  grep -E '^XEVO_LLM_API_KEY=' "$ROOT/server/.env" 2>/dev/null | head -n1 | cut -d= -f2- | tr -d '"'
+}
+
+# Load <model> into the Studio on <port> unless it is already resident.
+ensure_studio_model() {
+  local port="$1" model="$2" variant="$3" key
+  key="$(studio_key)"
+  if curl -sf --max-time 5 -H "Authorization: Bearer $key" "http://127.0.0.1:$port/v1/models" \
+    | grep -q "\"id\":\"$model\"[^}]*\"loaded\":true"; then
+    echo "$model already loaded on :$port"
+    return 0
+  fi
+  echo "Loading $model on :$port"
+  curl -sf --max-time 900 -X POST -H "Authorization: Bearer $key" -H "Content-Type: application/json" \
+    "http://127.0.0.1:$port/v1/load" \
+    -d "{\"model_path\":\"$model\",\"gguf_variant\":\"$variant\"}" >/dev/null \
+    || { echo "Could not load $model on :$port" >&2; return 1; }
+}
+
+start_voice_studio() {
+  if ! listening 8889; then
+    echo "Starting voice Studio"
+    mkdir -p "$VOICE_HOME"
+    # Same venv and login as the main Studio; models come from the shared Hugging Face cache.
+    [ -e "$VOICE_HOME/unsloth_studio" ] || ln -s "$STUDIO_HOME_MAIN/unsloth_studio" "$VOICE_HOME/unsloth_studio"
+    [ -d "$VOICE_HOME/auth" ] || cp -r "$STUDIO_HOME_MAIN/auth" "$VOICE_HOME/auth"
+    UNSLOTH_STUDIO_HOME="$VOICE_HOME" \
+      LLAMA_SERVER_PATH="${HOME}/.unsloth/llama.cpp/build/bin/llama-server" \
+      setsid "$STUDIO_HOME_MAIN/unsloth_studio/bin/unsloth" studio -p 8889 --api-only \
+      </dev/null >>"$LOG_DIR/unsloth-voice.log" 2>&1 &
+    echo $! >"$LOG_DIR/unsloth-voice.pid"
+    wait_port 8889 "Voice Studio"
+  else
+    echo "Voice Studio already listening on :8889"
+  fi
+  ensure_studio_model 8889 "$VOICE_MODEL" "$VOICE_VARIANT"
 }
 
 start_api() {
@@ -175,6 +224,8 @@ start_expo() {
 
 start_comfy
 start_unsloth
+ensure_studio_model 8888 "$CHAT_MODEL" "$CHAT_VARIANT" || true
+start_voice_studio || true
 ( cd "$ROOT/server" && start_api )
 start_ngrok
 start_emulator
@@ -183,5 +234,6 @@ start_emulator
 echo
 echo "API    $API_URL"
 echo "Unsloth $LLM_URL/v1"
+echo "Voice  http://127.0.0.1:8889/v1  (local only)"
 echo "Comfy  $COMFY_URL"
 echo "Phone  expo_pixel8  (Metro :8081)"
