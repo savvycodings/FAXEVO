@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bring up the local stack the app expects: API :3050, Unsloth :8888, ComfyUI :8188,
-# then one ngrok agent with a separate hostname for each. The coach voice Studio (:8889)
-# stays local; only the API talks to it.
+# voice Studio :8889, then one ngrok agent with a separate hostname for each. Railway's API
+# reaches the chat and voice models through those hostnames (XEVO_LLM_BASE_URL, XEVO_TTS_BASE_URL).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,6 +17,7 @@ EMULATOR_BIN="$ANDROID_HOME/emulator/emulator"
 API_URL="https://xevo-api-kyle.ngrok-free.dev"
 LLM_URL="https://xevo-sloth-kyle.ngrok.app"
 COMFY_URL="https://xevo-comfy-kyle.ngrok.dev"
+VOICE_URL="https://xevo-voice-kyle.ngrok.app"
 
 mkdir -p "$LOG_DIR"
 
@@ -127,12 +128,13 @@ ngrok_has_all() {
   body="$(curl -sf --max-time 2 http://127.0.0.1:4040/api/tunnels 2>/dev/null || true)"
   [[ "$body" == *"xevo-api-kyle.ngrok-free.dev"* ]] \
     && [[ "$body" == *"xevo-sloth-kyle.ngrok.app"* ]] \
-    && [[ "$body" == *"xevo-comfy-kyle.ngrok.dev"* ]]
+    && [[ "$body" == *"xevo-comfy-kyle.ngrok.dev"* ]] \
+    && [[ "$body" == *"xevo-voice-kyle.ngrok.app"* ]]
 }
 
 start_ngrok() {
   if ngrok_has_all; then
-    echo "ngrok already has xevo-api, unsloth, and comfy"
+    echo "ngrok already has xevo-api, unsloth, comfy, and voice"
     return 0
   fi
   if listening 4040; then
@@ -145,7 +147,7 @@ start_ngrok() {
   setsid ngrok start \
     --config "$NGROK_USER_YML" \
     --config "$NGROK_YML" \
-    xevo-api unsloth comfy \
+    xevo-api unsloth comfy voice \
     --log=stdout \
     </dev/null >>"$LOG_DIR/ngrok.log" 2>&1 &
   echo $! >"$LOG_DIR/ngrok.pid"
@@ -161,7 +163,7 @@ start_ngrok() {
     fi
     sleep 1
   done
-  echo "ngrok did not publish all three hostnames. See $LOG_DIR/ngrok.log" >&2
+  echo "ngrok did not publish all four hostnames. See $LOG_DIR/ngrok.log" >&2
   return 1
 }
 
@@ -234,6 +236,6 @@ start_emulator
 echo
 echo "API    $API_URL"
 echo "Unsloth $LLM_URL/v1"
-echo "Voice  http://127.0.0.1:8889/v1  (local only)"
+echo "Voice  $VOICE_URL/v1"
 echo "Comfy  $COMFY_URL"
 echo "Phone  expo_pixel8  (Metro :8081)"
