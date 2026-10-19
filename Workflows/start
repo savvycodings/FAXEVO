@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Bring up the local stack the app expects: API :3050, Unsloth :8888, ComfyUI :8188,
-# voice Studio :8889, then one ngrok agent with a separate hostname for each. Railway's API
-# reaches the chat and voice models through those hostnames (XEVO_LLM_BASE_URL, XEVO_TTS_BASE_URL).
+# EN voice Studio :8889, ES voice Studio :8890, then one ngrok agent with a separate hostname
+# for each. Railway's API reaches chat/voice through those hostnames
+# (XEVO_LLM_BASE_URL, XEVO_TTS_BASE_URL, XEVO_TTS_ES_BASE_URL).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,6 +19,7 @@ API_URL="https://xevo-api-kyle.ngrok-free.dev"
 LLM_URL="https://xevo-sloth-kyle.ngrok.app"
 COMFY_URL="https://xevo-comfy-kyle.ngrok.dev"
 VOICE_URL="https://xevo-voice-kyle.ngrok.app"
+VOICE_ES_URL="https://xevo-voice-es-kyle.ngrok.app"
 
 mkdir -p "$LOG_DIR"
 
@@ -64,52 +66,83 @@ start_unsloth() {
   wait_port 8888 "Unsloth"
 }
 
-# Studio holds one model at a time, so the coach voice (Orpheus) runs in a second, isolated
-# instance and the main one keeps the chat/analysis model.
+# Studio holds one model at a time, so coach voices run in isolated instances and the main
+# one keeps the chat/analysis model. EN Ceylia :8889, ES Maria :8890.
 VOICE_HOME="${HOME}/.unsloth/studio-voice"
+VOICE_ES_HOME="${HOME}/.unsloth/studio-voice-es"
 STUDIO_HOME_MAIN="${HOME}/.unsloth/studio"
 CHAT_MODEL="unsloth/Qwen3.5-4B-GGUF"
 CHAT_VARIANT="UD-Q4_K_XL"
 VOICE_MODEL="vinhnx90/VT-Orpheus-3B-TTS-Ceylia-Q4KM-GGUFF"
 VOICE_VARIANT="Q4_K_M"
+VOICE_ES_MODEL="freddyaboulton/3b-es_it-ft-research_release-Q4_K_M-GGUF"
+VOICE_ES_VARIANT="Q4_K_M"
 
 studio_key() {
   grep -E '^XEVO_LLM_API_KEY=' "$ROOT/server/.env" 2>/dev/null | head -n1 | cut -d= -f2- | tr -d '"'
 }
 
 # Load <model> into the Studio on <port> unless it is already resident.
+# Optional 4th arg: max_seq_length (TTS uses a small window so EN+ES fit beside chat).
+# Optional 5th arg: n_parallel (default 1 when max_seq_length is set).
 ensure_studio_model() {
-  local port="$1" model="$2" variant="$3" key
+  local port="$1" model="$2" variant="$3" max_seq="${4:-}" n_par="${5:-1}" key body
   key="$(studio_key)"
-  if curl -sf --max-time 5 -H "Authorization: Bearer $key" "http://127.0.0.1:$port/v1/models" \
+  if [ -z "$max_seq" ] && curl -sf --max-time 5 -H "Authorization: Bearer $key" "http://127.0.0.1:$port/v1/models" \
     | grep -q "\"id\":\"$model\"[^}]*\"loaded\":true"; then
     echo "$model already loaded on :$port"
     return 0
   fi
-  echo "Loading $model on :$port"
+  # For TTS: skip only when already loaded at the intended small context.
+  if [ -n "$max_seq" ] && curl -sf --max-time 5 -H "Authorization: Bearer $key" "http://127.0.0.1:$port/v1/models" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); m=next((x for x in d.get('data',[]) if x.get('id')==sys.argv[1]),None); sys.exit(0 if m and m.get('loaded') and int(m.get('context_length') or 0)==int(sys.argv[2]) else 1)" \
+      "$model" "$max_seq" 2>/dev/null; then
+    echo "$model already loaded on :$port (ctx=$max_seq)"
+    return 0
+  fi
+  echo "Loading $model on :$port${max_seq:+ (ctx=$max_seq, parallel=$n_par)}"
+  if [ -n "$max_seq" ]; then
+    body="{\"model_path\":\"$model\",\"gguf_variant\":\"$variant\",\"max_seq_length\":$max_seq,\"n_parallel\":$n_par,\"force_reload\":true}"
+  else
+    body="{\"model_path\":\"$model\",\"gguf_variant\":\"$variant\"}"
+  fi
   curl -sf --max-time 900 -X POST -H "Authorization: Bearer $key" -H "Content-Type: application/json" \
     "http://127.0.0.1:$port/v1/load" \
-    -d "{\"model_path\":\"$model\",\"gguf_variant\":\"$variant\"}" >/dev/null \
+    -d "$body" >/dev/null \
     || { echo "Could not load $model on :$port" >&2; return 1; }
 }
 
-start_voice_studio() {
-  if ! listening 8889; then
-    echo "Starting voice Studio"
-    mkdir -p "$VOICE_HOME"
+# TTS Orpheus only needs a short prompt window; 4096 keeps EN+ES resident with chat on one GPU.
+VOICE_CTX=4096
+
+start_voice_studio_on() {
+  local port="$1" home="$2" model="$3" variant="$4" label="$5" log="$6" pidfile="$7"
+  if ! listening "$port"; then
+    echo "Starting $label"
+    mkdir -p "$home"
     # Same venv and login as the main Studio; models come from the shared Hugging Face cache.
-    [ -e "$VOICE_HOME/unsloth_studio" ] || ln -s "$STUDIO_HOME_MAIN/unsloth_studio" "$VOICE_HOME/unsloth_studio"
-    [ -d "$VOICE_HOME/auth" ] || cp -r "$STUDIO_HOME_MAIN/auth" "$VOICE_HOME/auth"
-    UNSLOTH_STUDIO_HOME="$VOICE_HOME" \
+    [ -e "$home/unsloth_studio" ] || ln -s "$STUDIO_HOME_MAIN/unsloth_studio" "$home/unsloth_studio"
+    [ -d "$home/auth" ] || cp -r "$STUDIO_HOME_MAIN/auth" "$home/auth"
+    UNSLOTH_STUDIO_HOME="$home" \
       LLAMA_SERVER_PATH="${HOME}/.unsloth/llama.cpp/build/bin/llama-server" \
-      setsid "$STUDIO_HOME_MAIN/unsloth_studio/bin/unsloth" studio -p 8889 --api-only \
-      </dev/null >>"$LOG_DIR/unsloth-voice.log" 2>&1 &
-    echo $! >"$LOG_DIR/unsloth-voice.pid"
-    wait_port 8889 "Voice Studio"
+      setsid "$STUDIO_HOME_MAIN/unsloth_studio/bin/unsloth" studio -p "$port" --api-only \
+      </dev/null >>"$log" 2>&1 &
+    echo $! >"$pidfile"
+    wait_port "$port" "$label"
   else
-    echo "Voice Studio already listening on :8889"
+    echo "$label already listening on :$port"
   fi
-  ensure_studio_model 8889 "$VOICE_MODEL" "$VOICE_VARIANT"
+  ensure_studio_model "$port" "$model" "$variant" "$VOICE_CTX" 1
+}
+
+start_voice_studio() {
+  start_voice_studio_on 8889 "$VOICE_HOME" "$VOICE_MODEL" "$VOICE_VARIANT" \
+    "EN Voice Studio" "$LOG_DIR/unsloth-voice.log" "$LOG_DIR/unsloth-voice.pid"
+}
+
+start_voice_studio_es() {
+  start_voice_studio_on 8890 "$VOICE_ES_HOME" "$VOICE_ES_MODEL" "$VOICE_ES_VARIANT" \
+    "ES Voice Studio" "$LOG_DIR/unsloth-voice-es.log" "$LOG_DIR/unsloth-voice-es.pid"
 }
 
 start_api() {
@@ -129,12 +162,12 @@ ngrok_has_all() {
   [[ "$body" == *"xevo-api-kyle.ngrok-free.dev"* ]] \
     && [[ "$body" == *"xevo-sloth-kyle.ngrok.app"* ]] \
     && [[ "$body" == *"xevo-comfy-kyle.ngrok.dev"* ]] \
-    && [[ "$body" == *"xevo-voice-kyle.ngrok.app"* ]]
+    &&   [[ "$body" == *"xevo-voice-kyle.ngrok.app"* ]]
 }
 
 start_ngrok() {
   if ngrok_has_all; then
-    echo "ngrok already has xevo-api, unsloth, comfy, and voice"
+    echo "ngrok already has xevo-api, unsloth, comfy, and voice (voice-es started if domain exists)"
     return 0
   fi
   if listening 4040; then
@@ -147,7 +180,7 @@ start_ngrok() {
   setsid ngrok start \
     --config "$NGROK_USER_YML" \
     --config "$NGROK_YML" \
-    xevo-api unsloth comfy voice \
+    xevo-api unsloth comfy voice voice-es \
     --log=stdout \
     </dev/null >>"$LOG_DIR/ngrok.log" 2>&1 &
   echo $! >"$LOG_DIR/ngrok.pid"
@@ -163,7 +196,7 @@ start_ngrok() {
     fi
     sleep 1
   done
-  echo "ngrok did not publish all four hostnames. See $LOG_DIR/ngrok.log" >&2
+  echo "ngrok did not publish all five hostnames. See $LOG_DIR/ngrok.log" >&2
   return 1
 }
 
@@ -228,14 +261,16 @@ start_comfy
 start_unsloth
 ensure_studio_model 8888 "$CHAT_MODEL" "$CHAT_VARIANT" || true
 start_voice_studio || true
+start_voice_studio_es || true
 ( cd "$ROOT/server" && start_api )
 start_ngrok
 start_emulator
 ( cd "$ROOT/app" && start_expo )
 
 echo
-echo "API    $API_URL"
+echo "API     $API_URL"
 echo "Unsloth $LLM_URL/v1"
-echo "Voice  $VOICE_URL/v1"
-echo "Comfy  $COMFY_URL"
-echo "Phone  expo_pixel8  (Metro :8081)"
+echo "VoiceEN $VOICE_URL/v1"
+echo "VoiceES $VOICE_ES_URL/v1"
+echo "Comfy   $COMFY_URL"
+echo "Phone   expo_pixel8  (Metro :8081)"
