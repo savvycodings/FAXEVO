@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bring up the local stack the app expects: API :3050, Unsloth :8888, ComfyUI :8188,
-# EN voice Studio :8889, ES voice Studio :8890, then one ngrok agent with a separate hostname
-# for each. Railway's API reaches chat/voice through those hostnames
+# EN voice Studio :8889 (Orpheus Ceylia), ES Chatterbox :8890, then one ngrok agent with a
+# separate hostname for each. Railway's API reaches chat/voice through those hostnames
 # (XEVO_LLM_BASE_URL, XEVO_TTS_BASE_URL, XEVO_TTS_ES_BASE_URL).
 set -euo pipefail
 
@@ -66,17 +66,17 @@ start_unsloth() {
   wait_port 8888 "Unsloth"
 }
 
-# Studio holds one model at a time, so coach voices run in isolated instances and the main
-# one keeps the chat/analysis model. EN Ceylia :8889, ES Maria :8890.
+# Studio holds one model at a time, so the EN coach voice runs in an isolated instance and the
+# main one keeps the chat/analysis model. EN Ceylia :8889 (Orpheus). ES :8890 is Chatterbox
+# multilingual (OpenAI-compatible wrapper) — not Unsloth.
 VOICE_HOME="${HOME}/.unsloth/studio-voice"
-VOICE_ES_HOME="${HOME}/.unsloth/studio-voice-es"
 STUDIO_HOME_MAIN="${HOME}/.unsloth/studio"
 CHAT_MODEL="unsloth/Qwen3.5-4B-GGUF"
 CHAT_VARIANT="UD-Q4_K_XL"
 VOICE_MODEL="vinhnx90/VT-Orpheus-3B-TTS-Ceylia-Q4KM-GGUFF"
 VOICE_VARIANT="Q4_K_M"
-VOICE_ES_MODEL="freddyaboulton/3b-es_it-ft-research_release-Q4_K_M-GGUF"
-VOICE_ES_VARIANT="Q4_K_M"
+CHATTERBOX_ES_VENV="${HOME}/.xevo/chatterbox-es"
+CHATTERBOX_ES_SERVER="$ROOT/Workflows/chatterbox_es_server.py"
 
 studio_key() {
   grep -E '^XEVO_LLM_API_KEY=' "$ROOT/server/.env" 2>/dev/null | head -n1 | cut -d= -f2- | tr -d '"'
@@ -141,8 +141,39 @@ start_voice_studio() {
 }
 
 start_voice_studio_es() {
-  start_voice_studio_on 8890 "$VOICE_ES_HOME" "$VOICE_ES_MODEL" "$VOICE_ES_VARIANT" \
-    "ES Voice Studio" "$LOG_DIR/unsloth-voice-es.log" "$LOG_DIR/unsloth-voice-es.pid"
+  if listening 8890; then
+    # Prefer Chatterbox; if something else is already bound, leave it alone.
+    if curl -sf --max-time 3 "http://127.0.0.1:8890/health" | grep -q chatterbox; then
+      echo "ES Chatterbox already listening on :8890"
+      return 0
+    fi
+    echo "Port :8890 already in use (not Chatterbox). Leave it; set XEVO_TTS_ES_BASE_URL if needed."
+    return 0
+  fi
+  if [ ! -x "$CHATTERBOX_ES_VENV/bin/python" ]; then
+    echo "Chatterbox ES venv missing at $CHATTERBOX_ES_VENV" >&2
+    return 1
+  fi
+  if [ ! -f "$CHATTERBOX_ES_SERVER" ]; then
+    echo "Chatterbox ES server missing at $CHATTERBOX_ES_SERVER" >&2
+    return 1
+  fi
+  echo "Starting ES Chatterbox on :8890"
+  CHATTERBOX_HOST=127.0.0.1 CHATTERBOX_PORT=8890 CHATTERBOX_LANGUAGE=es \
+    setsid "$CHATTERBOX_ES_VENV/bin/python" "$CHATTERBOX_ES_SERVER" \
+    </dev/null >>"$LOG_DIR/chatterbox-es.log" 2>&1 &
+  echo $! >"$LOG_DIR/chatterbox-es.pid"
+  # First boot downloads HF weights; allow longer than the default 90s.
+  local i
+  for i in $(seq 1 300); do
+    if curl -sf --max-time 2 "http://127.0.0.1:8890/health" >/dev/null 2>&1; then
+      echo "ES Chatterbox is up on :8890"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ES Chatterbox did not listen on :8890. See $LOG_DIR/chatterbox-es.log" >&2
+  return 1
 }
 
 start_api() {
