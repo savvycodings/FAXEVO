@@ -196,6 +196,24 @@ ngrok_has_all() {
     &&   [[ "$body" == *"xevo-voice-kyle.ngrok.app"* ]]
 }
 
+start_remote_ssh() {
+  if ss -tlnH 2>/dev/null | awk '{print $4}' | grep -qE '[.:]2222$'; then
+    echo "Remote SSH already listening on 127.0.0.1:2222"
+    return 0
+  fi
+  local hostkey="${HOME}/.ssh/xevo_ssh_host_ed25519"
+  local conf="${HOME}/.ssh/xevo-sshd.conf"
+  if [ ! -f "$conf" ]; then
+    echo "Remote SSH config missing at $conf" >&2
+    return 1
+  fi
+  if [ ! -f "$hostkey" ]; then
+    ssh-keygen -t ed25519 -f "$hostkey" -N "" -q
+  fi
+  echo "Starting remote SSH on 127.0.0.1:2222"
+  /usr/sbin/sshd -f "$conf"
+}
+
 start_ngrok() {
   if ngrok_has_all; then
     echo "ngrok already has xevo-api, unsloth, comfy, and voice (voice-es started if domain exists)"
@@ -211,7 +229,7 @@ start_ngrok() {
   setsid ngrok start \
     --config "$NGROK_USER_YML" \
     --config "$NGROK_YML" \
-    xevo-api unsloth comfy voice voice-es \
+    xevo-api unsloth comfy voice voice-es ssh \
     --log=stdout \
     </dev/null >>"$LOG_DIR/ngrok.log" 2>&1 &
   echo $! >"$LOG_DIR/ngrok.pid"
@@ -294,6 +312,7 @@ ensure_studio_model 8888 "$CHAT_MODEL" "$CHAT_VARIANT" || true
 start_voice_studio || true
 start_voice_studio_es || true
 ( cd "$ROOT/server" && start_api )
+start_remote_ssh || true
 start_ngrok
 start_emulator
 ( cd "$ROOT/app" && start_expo )

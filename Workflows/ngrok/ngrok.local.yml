@@ -23,3 +23,6 @@ tunnels:
     proto: http
     addr: 8890
     domain: xevo-voice-es-kyle.ngrok.app
+  ssh:
+    proto: tcp
+    addr: 2222
