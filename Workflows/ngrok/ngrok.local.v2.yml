@@ -1,0 +1,29 @@
+# Windows-compatible tunnel config for older ngrok CLI (config version 2).
+# Auth token lives in %LOCALAPPDATA%\ngrok\ngrok.yml
+# Start:
+#   ngrok start --config "%LOCALAPPDATA%\ngrok\ngrok.yml" --config Workflows/ngrok/ngrok.local.v2.yml xevo-api unsloth comfy voice voice-es
+version: "2"
+tunnels:
+  xevo-api:
+    proto: http
+    addr: 3050
+    hostname: xevo-api-kyle.ngrok-free.dev
+  unsloth:
+    proto: http
+    addr: 8888
+    hostname: xevo-sloth-kyle.ngrok.app
+  comfy:
+    proto: http
+    addr: 8188
+    hostname: xevo-comfy-kyle.ngrok.dev
+  voice:
+    proto: http
+    addr: 8889
+    hostname: xevo-voice-kyle.ngrok.app
+  voice-es:
+    proto: http
+    addr: 8890
+    hostname: xevo-voice-es-kyle.ngrok.app
+  ssh:
+    proto: tcp
+    addr: 2222
