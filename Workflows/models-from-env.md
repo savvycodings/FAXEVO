@@ -7,8 +7,7 @@ Derived from `FAXevo/server/.env` (no secrets listed here).
 | Env | Port / URL | Model / assets |
 |-----|------------|----------------|
 | `XEVO_LLM_*` | Unsloth Studio `:8888` (ngrok `xevo-sloth-kyle`) | `unsloth/Qwen3.5-4B-GGUF` variant `UD-Q4_K_XL` |
-| `XEVO_TTS_*` | Orpheus Studio `:8889` | `vinhnx90/VT-Orpheus-3B-TTS-Ceylia-Q4KM-GGUFF` voice `ceylia` |
-| `XEVO_TTS_ES_*` | Chatterbox `:8890` | `ResembleAI/chatterbox` multilingual (`ChatterboxMultilingualTTS`, `language_id=es`) |
+| `XEVO_TTS_*` / `XEVO_TTS_ES_*` | Chatterbox `:8890` | `ResembleAI/chatterbox` multilingual (`language_id=en` / `es`) |
 | `COMFYUI_BASE_URL` | ComfyUI `:8188` (ngrok `xevo-comfy-kyle`) | See workflows below |
 | STT (coach dictation) | Unsloth Studio `/api/inference/audio/transcribe` | Whisper GGUF via Studio (e.g. `unslothai/whisper-large-v3-GGUF`) |
 

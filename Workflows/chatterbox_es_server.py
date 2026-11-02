@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-Spanish Chatterbox TTS — OpenAI-compatible /v1/audio/speech for Xevo coach.
+Chatterbox multilingual TTS — OpenAI-compatible /v1/audio/speech for Xevo coach.
 
-Drop-in for the old Orpheus Maria Studio on :8890. The coach router already
-POSTs { input, model, voice, response_format } to XEVO_TTS_ES_BASE_URL.
+Serves both English and Spanish (and other language_ids) on :8890.
+The coach router POSTs { input, model, voice, language, response_format }
+to XEVO_TTS_BASE_URL / XEVO_TTS_ES_BASE_URL.
 
 Env:
   CHATTERBOX_HOST       bind host (default 127.0.0.1)
   CHATTERBOX_PORT       bind port (default 8890)
   CHATTERBOX_DEVICE     cuda | cpu (default cuda)
-  CHATTERBOX_LANGUAGE   language_id for multilingual model (default es)
+  CHATTERBOX_LANGUAGE   default language_id when request omits language (default en)
   CHATTERBOX_VOICE_REF  optional reference wav for voice cloning
   CHATTERBOX_EXAGGERATION  default 0.5
   CHATTERBOX_CFG_WEIGHT    default 0.5
@@ -30,16 +31,31 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
+# Resemble's chatterbox expects perth.PerthImplicitWatermarker; the PyPI `perth`
+# stub does not ship it. Provide a no-op so multilingual TTS can load.
+try:
+    import perth as _perth
+
+    if getattr(_perth, "PerthImplicitWatermarker", None) is None:
+
+        class _NoopWatermarker:
+            def apply_watermark(self, wav, sample_rate=None, **kwargs):
+                return wav
+
+        _perth.PerthImplicitWatermarker = _NoopWatermarker  # type: ignore[attr-defined]
+except Exception:
+    pass
+
 HOST = os.environ.get("CHATTERBOX_HOST", "127.0.0.1")
 PORT = int(os.environ.get("CHATTERBOX_PORT", "8890"))
 DEVICE = os.environ.get("CHATTERBOX_DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
-LANGUAGE = os.environ.get("CHATTERBOX_LANGUAGE", "es")
+LANGUAGE = os.environ.get("CHATTERBOX_LANGUAGE", "en")
 VOICE_REF = os.environ.get("CHATTERBOX_VOICE_REF", "").strip() or None
 DEFAULT_EXAG = float(os.environ.get("CHATTERBOX_EXAGGERATION", "0.5"))
 DEFAULT_CFG = float(os.environ.get("CHATTERBOX_CFG_WEIGHT", "0.5"))
 MODEL_ID = "ResembleAI/chatterbox"
 
-app = FastAPI(title="Xevo Chatterbox ES", version="1.0")
+app = FastAPI(title="Xevo Chatterbox TTS", version="1.1")
 _lock = threading.Lock()
 _model = None
 _loaded_at: Optional[float] = None
@@ -52,13 +68,13 @@ def get_model():
     with _lock:
         if _model is not None:
             return _model
-        print(f"[chatterbox-es] loading multilingual on {DEVICE}…", flush=True)
+        print(f"[chatterbox] loading multilingual on {DEVICE}…", flush=True)
         t0 = time.time()
         from chatterbox.mtl_tts import ChatterboxMultilingualTTS
 
         _model = ChatterboxMultilingualTTS.from_pretrained(device=DEVICE)
         _loaded_at = time.time()
-        print(f"[chatterbox-es] ready in {_loaded_at - t0:.1f}s sr={_model.sr}", flush=True)
+        print(f"[chatterbox] ready in {_loaded_at - t0:.1f}s sr={_model.sr}", flush=True)
         return _model
 
 
@@ -111,7 +127,14 @@ def audio_speech(
     if not text:
         raise HTTPException(400, "input is required")
 
-    lang = (body.language or LANGUAGE).strip() or "es"
+    # Prefer explicit language; else infer from voice label; else env default.
+    voice = (body.voice or "").strip().lower()
+    inferred = "es" if voice.endswith("-es") or voice == "es" else ("en" if voice.endswith("-en") or voice == "en" else "")
+    lang = (body.language or inferred or LANGUAGE).strip().lower() or "en"
+    if lang.startswith("es"):
+        lang = "es"
+    elif lang.startswith("en"):
+        lang = "en"
     prompt = (body.audio_prompt_path or VOICE_REF or "").strip() or None
     exaggeration = body.exaggeration if body.exaggeration is not None else DEFAULT_EXAG
     cfg_weight = body.cfg_weight if body.cfg_weight is not None else DEFAULT_CFG
@@ -153,7 +176,7 @@ def audio_speech(
     sf.write(buf, audio_np, int(model.sr), format="WAV", subtype="PCM_16")
     audio = buf.getvalue()
     print(
-        f"[chatterbox-es] gen ok lang={lang} chars={len(text)} "
+        f"[chatterbox] gen ok lang={lang} chars={len(text)} "
         f"sec={time.time() - t0:.2f} bytes={len(audio)}",
         flush=True,
     )
@@ -171,5 +194,5 @@ if __name__ == "__main__":
     try:
         get_model()
     except Exception as e:
-        print(f"[chatterbox-es] warm-load failed (will retry on first request): {e}", flush=True)
+        print(f"[chatterbox] warm-load failed (will retry on first request): {e}", flush=True)
     uvicorn.run(app, host=HOST, port=PORT, log_level="info")
